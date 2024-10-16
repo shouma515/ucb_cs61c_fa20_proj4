@@ -255,3 +255,6 @@ server_basic server_process
 **/*._sobel.bmp
 
 files.txt
+
+# vscode
+.vscode
