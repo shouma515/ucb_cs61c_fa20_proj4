@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -g -Wall -std=c99 -fopenmp -mavx -mfma -pthread
+CFLAGS = -O2 -Wall -std=c99 -fopenmp -mavx -mfma -pthread
 LDFLAGS = -fopenmp
 CUNIT = -I/usr/include/CUnit -lcunit
 PYTHON = -I/usr/include/python3.10 -lpython3.10

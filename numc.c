@@ -604,9 +604,16 @@ PyObject *Matrix61c_subscript(Matrix61c* self, PyObject* key) {
     else if (PySlice_Check(key)) {
         // if key is a single slice
         Py_ssize_t start, stop, step, slicelength;
-        if (PySlice_GetIndicesEx(key, self->mat->rows,
-                                 &start, &stop, &step, &slicelength) < 0) {
-            return NULL;
+        if (self->mat->rows == 1) {
+            if (PySlice_GetIndicesEx(key, self->mat->cols,
+                                &start, &stop, &step, &slicelength) < 0) {
+                return NULL;
+            }
+        } else {
+            if (PySlice_GetIndicesEx(key, self->mat->rows,
+                                    &start, &stop, &step, &slicelength) < 0) {
+                return NULL;
+            }
         }
         if (slicelength == 0 || step != 1) {
             PyErr_SetString(PyExc_ValueError, "slice not valid for Matrix61c case.");
@@ -643,11 +650,117 @@ PyObject *Matrix61c_subscript(Matrix61c* self, PyObject* key) {
             PyErr_SetString(PyExc_TypeError, "for 1D matrix, key must be an int, a slice.");
             return NULL;
         }
-        int row, col;
-        PyObject* row_slice;
-        PyObject* col_slice;
+        // int row, col;
+        // PyObject* row_slice;
+        // PyObject* col_slice;
         // TODO: the following code has weird error when slice involving "-1", like [-1, :], [0, 0:-1], investigate it
-        if (PyArg_ParseTuple(key, "ii", &row, &col)) {
+        // if (PyArg_ParseTuple(key, "ii", &row, &col)) {
+        //     if (row < 0) {
+        //         row += self->mat->rows;
+        //     }
+        //     if (col < 0) {
+        //         col += self->mat->cols;
+        //     }
+        //     if (row < 0 || row >= self->mat->rows || col < 0 || col >= self->mat->cols) {
+        //         PyErr_SetString(PyExc_IndexError, "Index out of range.");
+        //         return NULL;
+        //     }
+        //     return PyFloat_FromDouble(get(self->mat, row, col));
+        // }
+        // else if (PyArg_ParseTuple(key, "iO!", &row, &PySlice_Type, &col_slice)) {
+        //     if (row < 0) {
+        //         row += self->mat->rows;
+        //     }
+        //     if (row < 0 || row >= self->mat->rows) {
+        //         PyErr_SetString(PyExc_IndexError, "Index out of range.");
+        //         return NULL;
+        //     }
+        //     Py_ssize_t start, stop, step, slicelength;
+        //     if (PySlice_GetIndicesEx(col_slice, self->mat->cols,
+        //                             &start, &stop, &step, &slicelength) < 0) {
+        //         return NULL;
+        //     }
+        //     if (slicelength == 0 || step != 1) {
+        //         PyErr_SetString(PyExc_ValueError, "slice not valid for Matrix61c case.");
+        //         return NULL;
+        //     }
+        //     if (slicelength == 1) {
+        //         return PyFloat_FromDouble(get(self->mat, row, start));
+        //     }
+        //     matrix* result = NULL;
+        //     if (allocate_matrix_ref(&result, self->mat, row, start, 1, slicelength)) {
+        //         PyErr_SetString(PyExc_RuntimeError, "Error when allocate matrix ref.");
+        //         return NULL;
+        //     }
+        //     return create_matrix61c(result);
+        // }
+        // else if (PyArg_ParseTuple(key, "O!i", &PySlice_Type, &row_slice, &col)) {
+        //     if (col < 0) {
+        //         col += self->mat->cols;
+        //     }
+        //     if (col < 0 || col >= self->mat->cols) {
+        //         PyErr_SetString(PyExc_IndexError, "Index out of range.");
+        //         return NULL;
+        //     }
+        //     Py_ssize_t start, stop, step, slicelength;
+        //     if (PySlice_GetIndicesEx(row_slice, self->mat->rows,
+        //                             &start, &stop, &step, &slicelength) < 0) {
+        //         return NULL;
+        //     }
+        //     if (slicelength == 0 || step != 1) {
+        //         PyErr_SetString(PyExc_ValueError, "slice not valid for Matrix61c case.");
+        //         return NULL;
+        //     }
+        //     if (slicelength == 1) {
+        //         return PyFloat_FromDouble(get(self->mat, start, col));
+        //     }
+        //     matrix* result = NULL;
+        //     if (allocate_matrix_ref(&result, self->mat, start, col, slicelength, 1)) {
+        //         PyErr_SetString(PyExc_RuntimeError, "Error when allocate matrix ref.");
+        //         return NULL;
+        //     }
+        //     return create_matrix61c(result);
+        // }
+        // else if (PyArg_ParseTuple(key, "O!O!", &PySlice_Type, &row_slice, &PySlice_Type, &col_slice)) {
+        //     Py_ssize_t row_start, stop, step, row_slicelength;
+        //     if (PySlice_GetIndicesEx(row_slice, self->mat->rows,
+        //                             &row_start, &stop, &step, &row_slicelength) < 0) {
+        //         return NULL;
+        //     }
+        //     if (row_slicelength == 0 || step != 1) {
+        //         PyErr_SetString(PyExc_ValueError, "slice not valid for Matrix61c case.");
+        //         return NULL;
+        //     }
+        //     Py_ssize_t col_start, col_slicelength;
+        //     if (PySlice_GetIndicesEx(col_slice, self->mat->cols,
+        //                             &col_start, &stop, &step, &col_slicelength) < 0) {
+        //         return NULL;
+        //     }
+        //     if (col_slicelength == 0 || step != 1) {
+        //         PyErr_SetString(PyExc_ValueError, "slice not valid for Matrix61c case.");
+        //         return NULL;
+        //     }
+
+        //     if (row_slicelength == 1 && col_slicelength == 1) {
+        //         return PyFloat_FromDouble(get(self->mat, row_start, col_start));
+        //     }
+        //     matrix* result = NULL;
+        //     if (allocate_matrix_ref(&result, self->mat, row_start, col_start, row_slicelength, col_slicelength)) {
+        //         PyErr_SetString(PyExc_RuntimeError, "Error when allocate matrix ref.");
+        //         return NULL;
+        //     }
+        //     return create_matrix61c(result);
+        // } else {
+        //     PyErr_SetString(PyExc_TypeError, "key of tuple type must be a slice/int tuple of size 2(for 2D matrix only)");
+        //     return NULL;
+        // }
+
+        PyObject *row_obj = PyTuple_GET_ITEM(key, 0);
+        PyObject *col_obj = PyTuple_GET_ITEM(key, 1);
+
+        if (PyLong_Check(row_obj) && PyLong_Check(col_obj)) {
+            int row = PyLong_AsLong(row_obj);
+            int col = PyLong_AsLong(col_obj);
             if (row < 0) {
                 row += self->mat->rows;
             }
@@ -660,7 +773,8 @@ PyObject *Matrix61c_subscript(Matrix61c* self, PyObject* key) {
             }
             return PyFloat_FromDouble(get(self->mat, row, col));
         }
-        else if (PyArg_ParseTuple(key, "iO!", &row, &PySlice_Type, &col_slice)) {
+        else if (PyLong_Check(row_obj) && PySlice_Check(col_obj)) {
+            int row = PyLong_AsLong(row_obj);
             if (row < 0) {
                 row += self->mat->rows;
             }
@@ -669,7 +783,7 @@ PyObject *Matrix61c_subscript(Matrix61c* self, PyObject* key) {
                 return NULL;
             }
             Py_ssize_t start, stop, step, slicelength;
-            if (PySlice_GetIndicesEx(col_slice, self->mat->cols,
+            if (PySlice_GetIndicesEx(col_obj, self->mat->cols,
                                     &start, &stop, &step, &slicelength) < 0) {
                 return NULL;
             }
@@ -687,7 +801,8 @@ PyObject *Matrix61c_subscript(Matrix61c* self, PyObject* key) {
             }
             return create_matrix61c(result);
         }
-        else if (PyArg_ParseTuple(key, "O!i", &PySlice_Type, &row_slice, &col)) {
+        else if (PySlice_Check(row_obj) && PyLong_Check(col_obj)) {
+            int col = PyLong_AsLong(col_obj);
             if (col < 0) {
                 col += self->mat->cols;
             }
@@ -696,7 +811,7 @@ PyObject *Matrix61c_subscript(Matrix61c* self, PyObject* key) {
                 return NULL;
             }
             Py_ssize_t start, stop, step, slicelength;
-            if (PySlice_GetIndicesEx(row_slice, self->mat->rows,
+            if (PySlice_GetIndicesEx(row_obj, self->mat->rows,
                                     &start, &stop, &step, &slicelength) < 0) {
                 return NULL;
             }
@@ -714,9 +829,9 @@ PyObject *Matrix61c_subscript(Matrix61c* self, PyObject* key) {
             }
             return create_matrix61c(result);
         }
-        else if (PyArg_ParseTuple(key, "O!O!", &PySlice_Type, &row_slice, &PySlice_Type, &col_slice)) {
+        else if (PySlice_Check(row_obj) && PySlice_Check(col_obj)) {
             Py_ssize_t row_start, stop, step, row_slicelength;
-            if (PySlice_GetIndicesEx(row_slice, self->mat->rows,
+            if (PySlice_GetIndicesEx(row_obj, self->mat->rows,
                                     &row_start, &stop, &step, &row_slicelength) < 0) {
                 return NULL;
             }
@@ -725,7 +840,7 @@ PyObject *Matrix61c_subscript(Matrix61c* self, PyObject* key) {
                 return NULL;
             }
             Py_ssize_t col_start, col_slicelength;
-            if (PySlice_GetIndicesEx(col_slice, self->mat->cols,
+            if (PySlice_GetIndicesEx(col_obj, self->mat->cols,
                                     &col_start, &stop, &step, &col_slicelength) < 0) {
                 return NULL;
             }
@@ -797,9 +912,16 @@ int Matrix61c_set_subscript(Matrix61c* self, PyObject *key, PyObject *v) {
     else if (PySlice_Check(key)) {
         // if key is a single slice
         Py_ssize_t start, stop, step, slicelength;
-        if (PySlice_GetIndicesEx(key, self->mat->rows,
-                                 &start, &stop, &step, &slicelength) < 0) {
-            return -1;
+        if (self->mat->rows == 1) {
+            if (PySlice_GetIndicesEx(key, self->mat->cols,
+                                &start, &stop, &step, &slicelength) < 0) {
+                return -1;
+            }
+        } else {
+            if (PySlice_GetIndicesEx(key, self->mat->rows,
+                                    &start, &stop, &step, &slicelength) < 0) {
+                return -1;
+            }
         }
         if (slicelength == 0 || step != 1) {
             PyErr_SetString(PyExc_ValueError, "slice not valid for Matrix61c case.");
@@ -823,10 +945,105 @@ int Matrix61c_set_subscript(Matrix61c* self, PyObject *key, PyObject *v) {
             PyErr_SetString(PyExc_TypeError, "for 1D matrix, key must be an int, a slice.");
             return -1;
         }
-        int row, col;
-        PyObject* row_slice;
-        PyObject* col_slice;
-        if (PyArg_ParseTuple(key, "ii", &row, &col)) {
+        // int row, col;
+        // PyObject* row_slice;
+        // PyObject* col_slice;
+        // if (PyArg_ParseTuple(key, "ii", &row, &col)) {
+        //     if (row < 0) {
+        //         row += self->mat->rows;
+        //     }
+        //     if (col < 0) {
+        //         col += self->mat->rows;
+        //     }
+        //     if (row < 0 || row >= self->mat->rows || col < 0 || col >= self->mat->cols) {
+        //         PyErr_SetString(PyExc_IndexError, "Index out of range.");
+        //         return -1;
+        //     }
+        //     return check_set_scalar(self->mat, row, col, v);
+        // } else if (PyArg_ParseTuple(key, "iO!", &row, &PySlice_Type, &col_slice)) {
+        //     if (row < 0) {
+        //         row += self->mat->rows;
+        //     }
+        //     if (row < 0 || row >= self->mat->rows) {
+        //         PyErr_SetString(PyExc_IndexError, "Index out of range.");
+        //         return -1;
+        //     }
+        //     Py_ssize_t start, stop, step, slicelength;
+        //     if (PySlice_GetIndicesEx(col_slice, self->mat->cols,
+        //                             &start, &stop, &step, &slicelength) < 0) {
+        //         return -1;
+        //     }
+        //     if (slicelength == 0 || step != 1) {
+        //         PyErr_SetString(PyExc_ValueError, "slice not valid for Matrix61c case.");
+        //         return -1;
+        //     }
+        //     if (slicelength == 1) {
+        //         return check_set_scalar(self->mat, row, start, v);
+        //     }
+        //     return check_set_row_1D(self->mat, row, start, slicelength, v);
+        // }
+        // else if (PyArg_ParseTuple(key, "O!i", &PySlice_Type, &row_slice, &col)) {
+        //     if (col < 0) {
+        //         col += self->mat->cols;
+        //     }
+        //     if (col < 0 || col >= self->mat->cols) {
+        //         PyErr_SetString(PyExc_IndexError, "Index out of range.");
+        //         return -1;
+        //     }
+        //     Py_ssize_t start, stop, step, slicelength;
+        //     if (PySlice_GetIndicesEx(row_slice, self->mat->rows,
+        //                             &start, &stop, &step, &slicelength) < 0) {
+        //         return -1;
+        //     }
+        //     if (slicelength == 0 || step != 1) {
+        //         PyErr_SetString(PyExc_ValueError, "slice not valid for Matrix61c case.");
+        //         return -1;
+        //     }
+        //     if (slicelength == 1) {
+        //         return check_set_scalar(self->mat, start, col, v);
+        //     }
+        //     return check_set_col_1D(self->mat, start, col, slicelength, v);
+        // }
+        // else if (PyArg_ParseTuple(key, "O!O!", &PySlice_Type, &row_slice, &PySlice_Type, &col_slice)) {
+        //     Py_ssize_t row_start, stop, step, row_slicelength;
+        //     if (PySlice_GetIndicesEx(row_slice, self->mat->rows,
+        //                             &row_start, &stop, &step, &row_slicelength) < 0) {
+        //         return -1;
+        //     }
+        //     if (row_slicelength == 0 || step != 1) {
+        //         PyErr_SetString(PyExc_ValueError, "slice not valid for Matrix61c case.");
+        //         return -1;
+        //     }
+        //     Py_ssize_t col_start, col_slicelength;
+        //     if (PySlice_GetIndicesEx(col_slice, self->mat->cols,
+        //                             &col_start, &stop, &step, &col_slicelength) < 0) {
+        //         return -1;
+        //     }
+        //     if (col_slicelength == 0 || step != 1) {
+        //         PyErr_SetString(PyExc_ValueError, "slice not valid for Matrix61c case.");
+        //         return -1;
+        //     }
+
+        //     if (row_slicelength == 1 && col_slicelength == 1) {
+        //         return check_set_scalar(self->mat, row_start, col_start, v);
+        //     }
+        //     if (row_slicelength == 1) {
+        //         return check_set_row_1D(self->mat, row_start, col_start, col_slicelength, v);
+        //     }
+        //     if (col_slicelength == 1) {
+        //         return check_set_col_1D(self->mat, row_start, col_start, row_slicelength, v);
+        //     }
+        //     return check_set_2D(self->mat, row_start, col_start, row_slicelength, col_slicelength, v);
+        // } else {
+        //     PyErr_SetString(PyExc_TypeError, "key of tuple type must be a slice/int tuple of size 2(for 2D matrix only)");
+        //     return -1;
+        // }
+        PyObject *row_obj = PyTuple_GET_ITEM(key, 0);
+        PyObject *col_obj = PyTuple_GET_ITEM(key, 1);
+
+        if (PyLong_Check(row_obj) && PyLong_Check(col_obj)) {
+            int row = PyLong_AsLong(row_obj);
+            int col = PyLong_AsLong(col_obj);
             if (row < 0) {
                 row += self->mat->rows;
             }
@@ -838,7 +1055,8 @@ int Matrix61c_set_subscript(Matrix61c* self, PyObject *key, PyObject *v) {
                 return -1;
             }
             return check_set_scalar(self->mat, row, col, v);
-        } else if (PyArg_ParseTuple(key, "iO!", &row, &PySlice_Type, &col_slice)) {
+        } else if (PyLong_Check(row_obj) && PySlice_Check(col_obj)) {
+            int row = PyLong_AsLong(row_obj);
             if (row < 0) {
                 row += self->mat->rows;
             }
@@ -847,7 +1065,7 @@ int Matrix61c_set_subscript(Matrix61c* self, PyObject *key, PyObject *v) {
                 return -1;
             }
             Py_ssize_t start, stop, step, slicelength;
-            if (PySlice_GetIndicesEx(col_slice, self->mat->cols,
+            if (PySlice_GetIndicesEx(col_obj, self->mat->cols,
                                     &start, &stop, &step, &slicelength) < 0) {
                 return -1;
             }
@@ -859,8 +1077,8 @@ int Matrix61c_set_subscript(Matrix61c* self, PyObject *key, PyObject *v) {
                 return check_set_scalar(self->mat, row, start, v);
             }
             return check_set_row_1D(self->mat, row, start, slicelength, v);
-        }
-        else if (PyArg_ParseTuple(key, "O!i", &PySlice_Type, &row_slice, &col)) {
+        } else if (PySlice_Check(row_obj) && PyLong_Check(col_obj)) {
+            int col = PyLong_AsLong(col_obj);
             if (col < 0) {
                 col += self->mat->cols;
             }
@@ -869,7 +1087,7 @@ int Matrix61c_set_subscript(Matrix61c* self, PyObject *key, PyObject *v) {
                 return -1;
             }
             Py_ssize_t start, stop, step, slicelength;
-            if (PySlice_GetIndicesEx(row_slice, self->mat->rows,
+            if (PySlice_GetIndicesEx(row_obj, self->mat->rows,
                                     &start, &stop, &step, &slicelength) < 0) {
                 return -1;
             }
@@ -881,10 +1099,9 @@ int Matrix61c_set_subscript(Matrix61c* self, PyObject *key, PyObject *v) {
                 return check_set_scalar(self->mat, start, col, v);
             }
             return check_set_col_1D(self->mat, start, col, slicelength, v);
-        }
-        else if (PyArg_ParseTuple(key, "O!O!", &PySlice_Type, &row_slice, &PySlice_Type, &col_slice)) {
+        } else if (PySlice_Check(row_obj) && PySlice_Check(col_obj)) {
             Py_ssize_t row_start, stop, step, row_slicelength;
-            if (PySlice_GetIndicesEx(row_slice, self->mat->rows,
+            if (PySlice_GetIndicesEx(row_obj, self->mat->rows,
                                     &row_start, &stop, &step, &row_slicelength) < 0) {
                 return -1;
             }
@@ -893,7 +1110,7 @@ int Matrix61c_set_subscript(Matrix61c* self, PyObject *key, PyObject *v) {
                 return -1;
             }
             Py_ssize_t col_start, col_slicelength;
-            if (PySlice_GetIndicesEx(col_slice, self->mat->cols,
+            if (PySlice_GetIndicesEx(col_obj, self->mat->cols,
                                     &col_start, &stop, &step, &col_slicelength) < 0) {
                 return -1;
             }

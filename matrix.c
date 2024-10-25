@@ -144,7 +144,7 @@ int allocate_matrix_ref(matrix **mat, matrix *from, int row_offset, int col_offs
     }
 
     (*mat)->is_1d = rows == 1 || cols == 1 ? 1 : 0;
-    (*mat)->ref_cnt = 0;
+    (*mat)->ref_cnt = 1;
     (*mat)->parent = from;
 
     from->ref_cnt += 1;
@@ -215,6 +215,13 @@ void set(matrix *mat, int row, int col, double val) {
  */
 void fill_matrix(matrix *mat, double val) {
     /* TODO: YOUR CODE HERE */
+    if (val == 0) {
+        for (int i = 0; i < mat->rows; i++) {
+            memset(mat->data[i], 0, mat->cols * sizeof(double));
+        }
+        return;
+    }
+
     for (int i = 0; i < mat->rows; i++) {
         for (int j = 0; j < mat->cols; j++) {
             mat->data[i][j] = val;
@@ -234,11 +241,130 @@ int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
             return -1;
         }
     
+    // method 1, straightforward
     for (int i = 0; i < result->rows; i++) {
         for (int j = 0; j < result->cols; j++) {
             result->data[i][j] = mat1->data[i][j] + mat2->data[i][j];
         }
     }
+
+    // // method 2, unrolling
+    // for (int i = 0; i < result->rows; i++) {
+    //     for (int j = 0; j < result->cols / 8 * 8; j+=8) {
+    //         result->data[i][j] = mat1->data[i][j] + mat2->data[i][j];
+    //         result->data[i][j+1] = mat1->data[i][j+1] + mat2->data[i][j+1];
+    //         result->data[i][j+2] = mat1->data[i][j+2] + mat2->data[i][j+2];
+    //         result->data[i][j+3] = mat1->data[i][j+3] + mat2->data[i][j+3];
+    //         result->data[i][j+4] = mat1->data[i][j+4] + mat2->data[i][j+4];
+    //         result->data[i][j+5] = mat1->data[i][j+5] + mat2->data[i][j+5];
+    //         result->data[i][j+6] = mat1->data[i][j+6] + mat2->data[i][j+6];
+    //         result->data[i][j+7] = mat1->data[i][j+7] + mat2->data[i][j+7];
+    //     }
+        
+    //     // deal with the last elements when cols is not a multiply of the factor
+    //     for (int j = result->cols / 8 * 8; j < result->cols; j++) {
+    //         result->data[i][j] = mat1->data[i][j] + mat2->data[i][j];
+    //     }
+    // }
+
+    // // method 3, SIMD
+    // for (int i = 0; i < result->rows; i++) {
+    //     for (int j = 0; j < result->cols/4*4; j+=4) {
+    //         __m256d op1 = _mm256_loadu_pd(mat1->data[i]+j);
+    //         __m256d op2 = _mm256_loadu_pd(mat2->data[i]+j);
+    //         __m256d r = _mm256_add_pd(op1, op2);
+    //         _mm256_storeu_pd(result->data[i]+j, r);
+    //     }
+
+    //     for (int j = result->cols / 4 * 4; j < result->cols; j++) {
+    //         result->data[i][j] = mat1->data[i][j] + mat2->data[i][j];
+    //     }
+    // }
+
+    // // method 4, OpenMP, simple parallel for
+    // #pragma omp parallel for
+    // for (int i = 0; i < result->rows; i++) {
+    //     for (int j = 0; j < result->cols/4*4; j+=4) {
+    //         __m256d op1 = _mm256_loadu_pd(mat1->data[i]+j);
+    //         __m256d op2 = _mm256_loadu_pd(mat2->data[i]+j);
+    //         __m256d r = _mm256_add_pd(op1, op2);
+    //         _mm256_storeu_pd(result->data[i]+j, r);
+    //     }
+
+    //     for (int j = result->cols / 4 * 4; j < result->cols; j++) {
+    //         result->data[i][j] = mat1->data[i][j] + mat2->data[i][j];
+    //     }
+    // }
+
+    // // method 4, OpenMP, manual job division, the simple method above does
+    // // not work when there are very few rows, but a lot cols
+    // // TODO: error when row is 1 and 2
+    // // TODO: this method also has problem when number of element of the matrix
+    // // is less then total number of threads
+    // #pragma omp parallel
+    // {
+    //     int omp_tid = omp_get_thread_num();
+    //     int total_thread = omp_get_num_threads();
+    //     printf("total_thread: %d, crnt_thread: %d\n", total_thread, omp_tid);
+    //     fflush(stdout);
+    //     int row_start, row_end, col_start, col_end;
+    //     if (result->rows >= total_thread) {
+    //         // TODO: figure out a better way to distribute
+    //         // workload more evenly among threads
+    //         // e.g., first using the naive method below, then
+    //         // move workload from highest to lowest until the diff
+    //         // between highest and lowest is one
+    //         int block_size = result->rows / total_thread;
+    //         row_start = block_size * omp_tid;
+    //         row_end = row_start + block_size;
+    //         if (omp_tid == total_thread - 1) {
+    //             // last thread need to handle all remaining nums
+    //             row_end = result->rows;
+    //         }
+    //         col_start = 0;
+    //         col_end = result->cols;
+    //     } else {
+    //         // very few rows
+    //         int thread_per_row = total_thread / result->rows;
+    //         int additional_thread = total_thread % result->rows;
+    //         if (omp_tid < additional_thread * (thread_per_row + 1)) {
+    //             // first additional_thread rows get 1 additional thread
+    //             row_start = omp_tid / (thread_per_row + 1);
+    //             row_end = row_start + 1;
+    //             int col_block_size = result->cols / (thread_per_row + 1);
+    //             int col_idx = omp_tid % (thread_per_row + 1);
+    //             col_start = col_idx * col_block_size;
+    //             col_end = col_start + col_block_size;
+    //             if (col_idx == thread_per_row) {
+    //                 col_end = result->cols;
+    //             }
+    //         } else {
+    //             // last few rows only get thread_per_row thread
+    //             int offset_idx = omp_tid - additional_thread * (thread_per_row + 1);
+    //             row_start = offset_idx / thread_per_row + additional_thread;
+    //             row_end = row_start + 1;
+    //             int col_block_size = result->cols / thread_per_row;
+    //             int col_idx = offset_idx % thread_per_row;
+    //             col_start = col_idx * col_block_size;
+    //             col_end = col_start + col_block_size;
+    //             if (col_idx == thread_per_row - 1) {
+    //                 col_end = result->cols;
+    //             }
+    //         }
+    //     }
+    //     for (int i = row_start; i < row_end; i++) {
+    //         for (int j = col_start; j < col_end/4*4; j+=4) {
+    //             __m256d op1 = _mm256_loadu_pd(mat1->data[i]+j);
+    //             __m256d op2 = _mm256_loadu_pd(mat2->data[i]+j);
+    //             __m256d r = _mm256_add_pd(op1, op2);
+    //             _mm256_storeu_pd(result->data[i]+j, r);
+    //         }
+
+    //         for (int j = col_end/4*4; j < col_end; j++) {
+    //             result->data[i][j] = mat1->data[i][j] + mat2->data[i][j];
+    //         }
+    //     }
+    // }
 
     return 0;
 }
@@ -299,6 +425,11 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
             }
         }
     }
+
+    // TODO: optimization
+    // 1. unroll
+    // 2. block-wise multiply
+    // 3. use memset to fill_matrix with zero
 
     return 0;
 }
