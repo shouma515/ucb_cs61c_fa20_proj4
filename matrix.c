@@ -447,7 +447,16 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
         || mat->rows != mat->cols) {
             return -1;
         }
-    set_identity(result); // this also handles pow == 0
+    // code to specially treat pow = 0 or 1, so that those two cases
+    // can be faster.
+    if (pow == 1) {
+        cp_matrix(result, mat);
+        return 0;
+    }
+    set_identity(result);
+    if (pow == 0) {
+        return 0;
+    }
     matrix *tmp = NULL; // use as space to hold multiplication result
     matrix *base = NULL; // base of pow calulation
     if (allocate_matrix(&tmp, mat->rows, mat->rows) != 0) {
@@ -456,11 +465,24 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
     if (allocate_matrix(&base, mat->rows, mat->rows) != 0) {
         return -1;
     }
-    cp_matrix(base, mat);
     // ans of pow (here we use result mat so that we don't need to allocate another matrix)
     matrix *ans = result;
+    int first_base = 1;
     while (pow)
     {
+        if (first_base) {
+            cp_matrix(base, mat);
+            first_base = 0;
+        } else {
+            // calculate current base, base = previous_base ** 2
+            // we do this complex if else, so that we can remove 1 unnecessary matrix multiplication,
+            // comparing with do calculate base at the end of each loop(which do not require
+            // test if this is the first base, i.e., mat**1)
+            mul_matrix(tmp, base, base);
+            matrix *t = base;
+            base = tmp;
+            tmp = t;
+        }
         if (pow & 1) {
             // ans = ans * base
             mul_matrix(tmp, ans, base);
@@ -468,11 +490,6 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
             ans = tmp;
             tmp = t;
         }
-        // base = base * base
-        mul_matrix(tmp, base, base);
-        matrix *t = base;
-        base = tmp;
-        tmp = t;
         pow >>= 1;
     }
 
