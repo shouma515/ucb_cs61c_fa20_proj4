@@ -441,6 +441,7 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
  * Remember that pow is defined with matrix multiplication, not element-wise multiplication.
  */
 // pow a 1000 * 1000 matrix to 3, start with 12.4s for 10 times, i.e. 1.24s
+// 1. reorder base calculation to reduce 1 unnecessary multiplication, reduce time to 10.0s
 int pow_matrix(matrix *result, matrix *mat, int pow) {
     /* TODO: YOUR CODE HERE */
     // use fast pow: https://zhuanlan.zhihu.com/p/42639682
