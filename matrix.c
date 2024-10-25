@@ -395,6 +395,7 @@ int sub_matrix(matrix *result, matrix *mat1, matrix *mat2) {
  * Return 0 upon success and a nonzero value upon failure.
  * Remember that matrix multiplication is not the same as multiplying individual elements.
  */
+// mutiply two 1000*1000 matrices takes 3.0s for 10 times to start with, i.e., 300ms
 int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     /* TODO: YOUR CODE HERE */
     if (result == NULL || mat1 == NULL || mat2 == NULL ||
@@ -439,6 +440,7 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
  * Return 0 upon success and a nonzero value upon failure.
  * Remember that pow is defined with matrix multiplication, not element-wise multiplication.
  */
+// pow a 1000 * 1000 matrix to 3, start with 12.4s for 10 times, i.e. 1.24s
 int pow_matrix(matrix *result, matrix *mat, int pow) {
     /* TODO: YOUR CODE HERE */
     // use fast pow: https://zhuanlan.zhihu.com/p/42639682
