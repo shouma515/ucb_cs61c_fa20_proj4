@@ -395,7 +395,9 @@ int sub_matrix(matrix *result, matrix *mat1, matrix *mat2) {
  * Return 0 upon success and a nonzero value upon failure.
  * Remember that matrix multiplication is not the same as multiplying individual elements.
  */
-// mutiply two 1000*1000 matrices takes 3.0s for 10 times to start with, i.e., 300ms
+// mutiply two 1000*1000 matrices
+// 1. raw method one takes 15-20s for 10 times, i.e., 1.5-2s
+// 2. change ijk to ikj takes 3.0s - 3.5s for 10 times to start with, i.e., 300ms
 int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     /* TODO: YOUR CODE HERE */
     if (result == NULL || mat1 == NULL || mat2 == NULL ||
@@ -404,24 +406,132 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
             return -1;
         }
     
-    // TODO: test the speed of the following two implementation
-    // method 1: 
+    // // TODO: test the speed of the following two implementation
+    // // method 1: takes 15.7s for 10 times, i.e., 1.57s
     // for (int i = 0; i < result->rows; i++) {
     //     for (int j = 0; j < result->cols; j++) {
-    //         result->data[i][j] = 0;
+    //         double sum = 0;
     //         for (int k = 0; k < mat1->cols; k++) {
+    //             sum += mat1->data[i][k] * mat2->data[k][j];
+    //         }
+    //         result->data[i][j] = sum;
+    //     }
+    // }
+
+    // method 2: more cache friendly as we store data row-wise, 3.25s for 10 times
+    // TODO: maybe try to initialize result->data[i][j] to zero in the inner loop
+    // using a test on k == 0? so that no additional functional is needed.
+    // fill_matrix(result, 0);
+    // for (int i = 0; i < result->rows; i++) {
+    //     for (int k = 0; k < mat1->cols; k++) {
+    //         for (int j = 0; j < result->cols; j++) {
     //             result->data[i][j] += mat1->data[i][k] * mat2->data[k][j];
     //         }
     //     }
     // }
 
-    // method 2: more cache friendly as we store data row-wise
-    // TODO: maybe try to initialize result->data[i][j] to zero in the inner loop
-    // using a test on k == 0? so that no additional functional is needed.
+    // // method 3: block
+    // // // method 4: SIMD, ~5s for 10 times, 500ms
+    // fill_matrix(result, 0);
+    // for (int i = 0; i < result->rows; i++) {
+    //     for (int k = 0; k < mat1->cols; k++) {
+    //         __m256d a = _mm256_set1_pd(mat1->data[i][k]);
+    //         for (int j = 0; j < result->cols / 4 * 4; j+=4) {
+    //             __m256d v_b = _mm256_loadu_pd(mat2->data[k] + j);
+    //             __m256d v_c = _mm256_loadu_pd(mat2->data[i] + j);
+    //             __m256d v_r = _mm256_fmadd_pd(a, v_b, v_c);
+    //             _mm256_storeu_pd(result->data[i] + j, v_r);
+    //         }
+
+    //         for (int j = result->cols / 4 * 4; j < result->cols; j++) {
+    //             result->data[i][j] += mat1->data[i][k] * mat2->data[k][j];
+    //         }
+    //     }
+    // }
+    // // method 5: SIMD + unroll, ~2.5s for 10 times, 250ms
+    // fill_matrix(result, 0);
+    // for (int i = 0; i < result->rows; i++) {
+    //     for (int k = 0; k < mat1->cols / 4 * 4; k+=4) {
+    //         __m256d a1 = _mm256_set1_pd(mat1->data[i][k]);
+    //         __m256d a2 = _mm256_set1_pd(mat1->data[i][k+1]);
+    //         __m256d a3 = _mm256_set1_pd(mat1->data[i][k+2]);
+    //         __m256d a4 = _mm256_set1_pd(mat1->data[i][k+3]);
+    //         for (int j = 0; j < result->cols / 4 * 4; j+=4) {
+    //             __m256d v_b1 = _mm256_loadu_pd(mat2->data[k] + j);
+    //             __m256d v_b2 = _mm256_loadu_pd(mat2->data[k+1] + j);
+    //             __m256d v_b3 = _mm256_loadu_pd(mat2->data[k+2] + j);
+    //             __m256d v_b4 = _mm256_loadu_pd(mat2->data[k+3] + j);
+    //             __m256d v_r = _mm256_loadu_pd(mat2->data[i] + j);
+    //             v_r = _mm256_fmadd_pd(a1, v_b1, v_r);
+    //             v_r = _mm256_fmadd_pd(a2, v_b2, v_r);
+    //             v_r = _mm256_fmadd_pd(a3, v_b3, v_r);
+    //             v_r = _mm256_fmadd_pd(a4, v_b4, v_r);
+    //             _mm256_storeu_pd(result->data[i] + j, v_r);
+    //         }
+
+    //         for (int j = result->cols / 4 * 4; j < result->cols; j++) {
+    //             result->data[i][j] += mat1->data[i][k] * mat2->data[k][j];
+    //             result->data[i][j] += mat1->data[i][k+1] * mat2->data[k+1][j];
+    //             result->data[i][j] += mat1->data[i][k+2] * mat2->data[k+2][j];
+    //             result->data[i][j] += mat1->data[i][k+3] * mat2->data[k+3][j];
+    //         }
+    //     }
+
+    //     for (int k = mat1->cols / 4 * 4; k < mat1->cols; k++) {
+    //         __m256d a = _mm256_set1_pd(mat1->data[i][k]);
+    //         for (int j = 0; j < result->cols / 4 * 4; j+=4) {
+    //             __m256d v_b = _mm256_loadu_pd(mat2->data[k] + j);
+    //             __m256d v_c = _mm256_loadu_pd(mat2->data[i] + j);
+    //             __m256d v_r = _mm256_fmadd_pd(a, v_b, v_c);
+    //             _mm256_storeu_pd(result->data[i] + j, v_r);
+    //         }
+
+    //         for (int j = result->cols / 4 * 4; j < result->cols; j++) {
+    //             result->data[i][j] += mat1->data[i][k] * mat2->data[k][j];
+    //         }
+    //     }
+    // }
+
+    // method 6: SIMD + unroll + OpenMP, ~0.4s for 10 times, 40ms
     fill_matrix(result, 0);
+    #pragma omp parallel for
     for (int i = 0; i < result->rows; i++) {
-        for (int k = 0; k < mat1->cols; k++) {
-            for (int j = 0; j < result->cols; j++) {
+        for (int k = 0; k < mat1->cols / 4 * 4; k+=4) {
+            __m256d a1 = _mm256_set1_pd(mat1->data[i][k]);
+            __m256d a2 = _mm256_set1_pd(mat1->data[i][k+1]);
+            __m256d a3 = _mm256_set1_pd(mat1->data[i][k+2]);
+            __m256d a4 = _mm256_set1_pd(mat1->data[i][k+3]);
+            for (int j = 0; j < result->cols / 4 * 4; j+=4) {
+                __m256d v_b1 = _mm256_loadu_pd(mat2->data[k] + j);
+                __m256d v_b2 = _mm256_loadu_pd(mat2->data[k+1] + j);
+                __m256d v_b3 = _mm256_loadu_pd(mat2->data[k+2] + j);
+                __m256d v_b4 = _mm256_loadu_pd(mat2->data[k+3] + j);
+                __m256d v_r = _mm256_loadu_pd(mat2->data[i] + j);
+                v_r = _mm256_fmadd_pd(a1, v_b1, v_r);
+                v_r = _mm256_fmadd_pd(a2, v_b2, v_r);
+                v_r = _mm256_fmadd_pd(a3, v_b3, v_r);
+                v_r = _mm256_fmadd_pd(a4, v_b4, v_r);
+                _mm256_storeu_pd(result->data[i] + j, v_r);
+            }
+
+            for (int j = result->cols / 4 * 4; j < result->cols; j++) {
+                result->data[i][j] += mat1->data[i][k] * mat2->data[k][j];
+                result->data[i][j] += mat1->data[i][k+1] * mat2->data[k+1][j];
+                result->data[i][j] += mat1->data[i][k+2] * mat2->data[k+2][j];
+                result->data[i][j] += mat1->data[i][k+3] * mat2->data[k+3][j];
+            }
+        }
+
+        for (int k = mat1->cols / 4 * 4; k < mat1->cols; k++) {
+            __m256d a = _mm256_set1_pd(mat1->data[i][k]);
+            for (int j = 0; j < result->cols / 4 * 4; j+=4) {
+                __m256d v_b = _mm256_loadu_pd(mat2->data[k] + j);
+                __m256d v_c = _mm256_loadu_pd(mat2->data[i] + j);
+                __m256d v_r = _mm256_fmadd_pd(a, v_b, v_c);
+                _mm256_storeu_pd(result->data[i] + j, v_r);
+            }
+
+            for (int j = result->cols / 4 * 4; j < result->cols; j++) {
                 result->data[i][j] += mat1->data[i][k] * mat2->data[k][j];
             }
         }
@@ -435,6 +545,7 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     return 0;
 }
 
+
 /*
  * Store the result of raising mat to the (pow)th power to `result`.
  * Return 0 upon success and a nonzero value upon failure.
@@ -442,6 +553,7 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
  */
 // pow a 1000 * 1000 matrix to 3, start with 12.4s for 10 times, i.e. 1.24s
 // 1. reorder base calculation to reduce 1 unnecessary multiplication, reduce time to 10.0s
+// 2. with multiplication method 6, reduce pow to 1.36s for 10 times, 136ms
 int pow_matrix(matrix *result, matrix *mat, int pow) {
     /* TODO: YOUR CODE HERE */
     // use fast pow: https://zhuanlan.zhihu.com/p/42639682
