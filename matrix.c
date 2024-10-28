@@ -29,6 +29,10 @@
 // private function declarations
 int set_identity(matrix*);
 int cp_matrix(matrix *, matrix*);
+inline void do_block(double **, int, int,
+    double **, int, int,
+    double **, int, int, 
+    int, int, int);
 
 /*
  * Generates a random double between `low` and `high`.
@@ -430,7 +434,30 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     //     }
     // }
 
-    // // method 3: block
+    // // method 3: block, ~7s for 10 times, guess that the 2d array implementation is not cache friendly
+    // // for blocks
+    // fill_matrix(result, 0);
+    // int blocksize = 16;
+    // // for (int i = 0; i < result->rows; i+=blocksize) {
+    // //     for (int j = 0; j < result->cols; j+=blocksize) {
+    // //         int row = (i + blocksize) < result->rows ? blocksize : result->rows - i;
+    // //         int col = (j + blocksize) < result->cols ? blocksize : result->cols - j;
+    // //         for (int k = 0; k < mat1->cols; k+=blocksize) {
+    // //             int col1 = (k + blocksize) < mat1->cols ? blocksize : mat1->cols - k;
+    // //             do_block(mat1->data, i, k, mat2->data, k, j, result->data, i, j, row, col, col1);
+    // //         }
+    // //     }
+    // // }
+    // for (int i = 0; i < result->rows; i+=blocksize) {
+    //     for (int k = 0; k < mat1->cols; k+=blocksize) {
+    //         int row = (i + blocksize) < result->rows ? blocksize : result->rows - i;
+    //         int col1 = (k + blocksize) < mat1->cols ? blocksize : mat1->cols - k;
+    //         for (int j = 0; j < result->cols; j+=blocksize){
+    //             int col = (j + blocksize) < result->cols ? blocksize : result->cols - j;
+    //             do_block(mat1->data, i, k, mat2->data, k, j, result->data, i, j, row, col, col1);
+    //         }
+    //     }
+    // }
     // // // method 4: SIMD, ~5s for 10 times, 500ms
     // fill_matrix(result, 0);
     // for (int i = 0; i < result->rows; i++) {
@@ -492,50 +519,50 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     //     }
     // }
 
-    // method 6: SIMD + unroll + OpenMP, ~0.4s for 10 times, 40ms
-    fill_matrix(result, 0);
-    #pragma omp parallel for
-    for (int i = 0; i < result->rows; i++) {
-        for (int k = 0; k < mat1->cols / 4 * 4; k+=4) {
-            __m256d a1 = _mm256_set1_pd(mat1->data[i][k]);
-            __m256d a2 = _mm256_set1_pd(mat1->data[i][k+1]);
-            __m256d a3 = _mm256_set1_pd(mat1->data[i][k+2]);
-            __m256d a4 = _mm256_set1_pd(mat1->data[i][k+3]);
-            for (int j = 0; j < result->cols / 4 * 4; j+=4) {
-                __m256d v_b1 = _mm256_loadu_pd(mat2->data[k] + j);
-                __m256d v_b2 = _mm256_loadu_pd(mat2->data[k+1] + j);
-                __m256d v_b3 = _mm256_loadu_pd(mat2->data[k+2] + j);
-                __m256d v_b4 = _mm256_loadu_pd(mat2->data[k+3] + j);
-                __m256d v_r = _mm256_loadu_pd(mat2->data[i] + j);
-                v_r = _mm256_fmadd_pd(a1, v_b1, v_r);
-                v_r = _mm256_fmadd_pd(a2, v_b2, v_r);
-                v_r = _mm256_fmadd_pd(a3, v_b3, v_r);
-                v_r = _mm256_fmadd_pd(a4, v_b4, v_r);
-                _mm256_storeu_pd(result->data[i] + j, v_r);
-            }
+    // // method 6: SIMD + unroll + OpenMP, ~0.4s for 10 times, 40ms
+    // fill_matrix(result, 0);
+    // #pragma omp parallel for
+    // for (int i = 0; i < result->rows; i++) {
+    //     for (int k = 0; k < mat1->cols / 4 * 4; k+=4) {
+    //         __m256d a1 = _mm256_set1_pd(mat1->data[i][k]);
+    //         __m256d a2 = _mm256_set1_pd(mat1->data[i][k+1]);
+    //         __m256d a3 = _mm256_set1_pd(mat1->data[i][k+2]);
+    //         __m256d a4 = _mm256_set1_pd(mat1->data[i][k+3]);
+    //         for (int j = 0; j < result->cols / 4 * 4; j+=4) {
+    //             __m256d v_b1 = _mm256_loadu_pd(mat2->data[k] + j);
+    //             __m256d v_b2 = _mm256_loadu_pd(mat2->data[k+1] + j);
+    //             __m256d v_b3 = _mm256_loadu_pd(mat2->data[k+2] + j);
+    //             __m256d v_b4 = _mm256_loadu_pd(mat2->data[k+3] + j);
+    //             __m256d v_r = _mm256_loadu_pd(mat2->data[i] + j);
+    //             v_r = _mm256_fmadd_pd(a1, v_b1, v_r);
+    //             v_r = _mm256_fmadd_pd(a2, v_b2, v_r);
+    //             v_r = _mm256_fmadd_pd(a3, v_b3, v_r);
+    //             v_r = _mm256_fmadd_pd(a4, v_b4, v_r);
+    //             _mm256_storeu_pd(result->data[i] + j, v_r);
+    //         }
 
-            for (int j = result->cols / 4 * 4; j < result->cols; j++) {
-                result->data[i][j] += mat1->data[i][k] * mat2->data[k][j];
-                result->data[i][j] += mat1->data[i][k+1] * mat2->data[k+1][j];
-                result->data[i][j] += mat1->data[i][k+2] * mat2->data[k+2][j];
-                result->data[i][j] += mat1->data[i][k+3] * mat2->data[k+3][j];
-            }
-        }
+    //         for (int j = result->cols / 4 * 4; j < result->cols; j++) {
+    //             result->data[i][j] += mat1->data[i][k] * mat2->data[k][j];
+    //             result->data[i][j] += mat1->data[i][k+1] * mat2->data[k+1][j];
+    //             result->data[i][j] += mat1->data[i][k+2] * mat2->data[k+2][j];
+    //             result->data[i][j] += mat1->data[i][k+3] * mat2->data[k+3][j];
+    //         }
+    //     }
 
-        for (int k = mat1->cols / 4 * 4; k < mat1->cols; k++) {
-            __m256d a = _mm256_set1_pd(mat1->data[i][k]);
-            for (int j = 0; j < result->cols / 4 * 4; j+=4) {
-                __m256d v_b = _mm256_loadu_pd(mat2->data[k] + j);
-                __m256d v_c = _mm256_loadu_pd(mat2->data[i] + j);
-                __m256d v_r = _mm256_fmadd_pd(a, v_b, v_c);
-                _mm256_storeu_pd(result->data[i] + j, v_r);
-            }
+    //     for (int k = mat1->cols / 4 * 4; k < mat1->cols; k++) {
+    //         __m256d a = _mm256_set1_pd(mat1->data[i][k]);
+    //         for (int j = 0; j < result->cols / 4 * 4; j+=4) {
+    //             __m256d v_b = _mm256_loadu_pd(mat2->data[k] + j);
+    //             __m256d v_c = _mm256_loadu_pd(mat2->data[i] + j);
+    //             __m256d v_r = _mm256_fmadd_pd(a, v_b, v_c);
+    //             _mm256_storeu_pd(result->data[i] + j, v_r);
+    //         }
 
-            for (int j = result->cols / 4 * 4; j < result->cols; j++) {
-                result->data[i][j] += mat1->data[i][k] * mat2->data[k][j];
-            }
-        }
-    }
+    //         for (int j = result->cols / 4 * 4; j < result->cols; j++) {
+    //             result->data[i][j] += mat1->data[i][k] * mat2->data[k][j];
+    //         }
+    //     }
+    // }
 
     // TODO: optimization
     // 1. unroll
@@ -545,6 +572,20 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     return 0;
 }
 
+inline void do_block(double **data1, int i1, int j1,
+    double **data2, int i2, int j2,
+    double **datar, int ir, int jr, 
+    int row, int col, int col1) {
+        for (int i = 0; i < row; i++) {
+            for (int j = 0; j < col; j++) {
+                double sum = 0;
+                for (int k = 0; k < col1; k++) {
+                    sum += data1[i1+i][j1+k] * data2[i2+k][j2+j];
+                }
+                datar[ir+i][jr+j] += sum;
+            }
+        }
+    }
 
 /*
  * Store the result of raising mat to the (pow)th power to `result`.
